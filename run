@@ -40,7 +40,7 @@ if [[ ! -d $TEMPDIR ]]; then
       "ipam": {
         "type": "host-local",
         "routes": [{ "dst": "0.0.0.0/0" }],
-        "ranges": [[{ "subnet": "10.88.0.0/16", "gateway": "10.88.0.1" }]]
+        "ranges": [[{ "subnet": "172.88.0.0/16", "gateway": "172.88.0.1" }]]
       }
     },
     { "type": "portmap", "capabilities": { "portMappings": true } },

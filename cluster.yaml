@@ -28,6 +28,13 @@ spec:
         - name: podman-static
           image: quay.io/saschagrunert/podman-static:latest
           imagePullPolicy: Always
+          resources:
+            limits:
+              memory: 1Gi
+              cpu: 1000m
+            requests:
+              memory: 64Mi
+              cpu: 100m
 ---
 apiVersion: v1
 kind: Service
