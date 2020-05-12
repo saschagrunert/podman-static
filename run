@@ -4,28 +4,28 @@ IFS=$'\n\t'
 
 TEMPDIR=/tmp/podman-static
 ADD_ARGS=${ADD_ARGS:-}
-URL=${URL:-https://podman.k8s.saschagrunert.de/assets}
 container=${container:-}
 
 if [[ -n $container ]]; then
     ADD_ARGS="--storage-driver=vfs"
 fi
 
+export REGISTRIES_CONFIG_PATH=$TEMPDIR/registries.conf
+export SIGNATURE_POLICY_PATH=$TEMPDIR/policy.json
+export CNI_DEFAULT_NETWORK=podman
+export CNI_CONFIG_DIR=$TEMPDIR/net.d
+export CNI_PLUGIN_DIR=$TEMPDIR/plugins
+
 if [[ ! -d $TEMPDIR ]]; then
     echo "Preparing $TEMPDIR, which will be re-used in future calls"
     mkdir -p $TEMPDIR
 
-    export REGISTRIES_CONFIG_PATH=$TEMPDIR/registries.conf
     echo 'unqualified-search-registries = ["docker.io", "quay.io"]' \
         >"$REGISTRIES_CONFIG_PATH"
 
-    export SIGNATURE_POLICY_PATH=$TEMPDIR/policy.json
     echo '{ "default": [{ "type": "insecureAcceptAnything" }] }' \
         >"$SIGNATURE_POLICY_PATH"
 
-    export CNI_DEFAULT_NETWORK=podman
-
-    export CNI_CONFIG_DIR=$TEMPDIR/net.d
     mkdir -p "$CNI_CONFIG_DIR"
     cat <<EOT >>"$CNI_CONFIG_DIR/87-podman-bridge.conflist"
 {
@@ -49,24 +49,28 @@ if [[ ! -d $TEMPDIR ]]; then
 }
 EOT
 
-    export CNI_PLUGIN_DIR=$TEMPDIR/plugins
     mkdir -p "$CNI_PLUGIN_DIR"
 
     echo "Downloading assets…"
-    curl -s "$URL/bridge" -o "$CNI_PLUGIN_DIR/bridge" &
-    curl -s "$URL/portmap" -o "$CNI_PLUGIN_DIR/portmap" &
-    curl -s "$URL/host-local" -o "$CNI_PLUGIN_DIR/host-local" &
-    curl -s "$URL/tuning" -o "$CNI_PLUGIN_DIR/tuning" &
-    curl -s "$URL/conmon" -o "$TEMPDIR/conmon" &
-    curl -s "$URL/runc" -o "$TEMPDIR/runc" &
-    curl -s "$URL/podman" -o "$TEMPDIR/podman" &
+    declare -A VERSIONS=(
+        ["cni-plugins"]=v0.8.5
+        ["conmon"]=v2.0.15
+        ["runc"]=v1.0.0-rc10
+    )
+    curl_to() {
+        curl -sfL -o "$1" "$2"
+    }
+    curl_to "$TEMPDIR/conmon" \
+        https://github.com/containers/conmon/releases/download/"${VERSIONS["conmon"]}"/conmon &
+    curl_to - \
+        https://github.com/containernetworking/plugins/releases/download/"${VERSIONS["cni-plugins"]}"/cni-plugins-linux-amd64-"${VERSIONS["cni-plugins"]}".tgz |
+        tar xfz - -C "$CNI_PLUGIN_DIR" &
+    curl_to "$TEMPDIR/runc" \
+        https://github.com/opencontainers/runc/releases/download/"${VERSIONS["runc"]}"/runc.amd64 &
+    curl_to "$TEMPDIR/podman" https://podman.k8s.saschagrunert.de/podman &
 
     wait
 
-    chmod +x "$CNI_PLUGIN_DIR/bridge"
-    chmod +x "$CNI_PLUGIN_DIR/host-local"
-    chmod +x "$CNI_PLUGIN_DIR/portmap"
-    chmod +x "$CNI_PLUGIN_DIR/tuning"
     chmod +x "$TEMPDIR/conmon"
     chmod +x "$TEMPDIR/podman"
     chmod +x "$TEMPDIR/runc"
