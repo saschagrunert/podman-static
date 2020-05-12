@@ -12,6 +12,7 @@ if [[ -n $container ]]; then
 fi
 
 if [[ ! -d $TEMPDIR ]]; then
+    echo "Preparing $TEMPDIR, which will be re-used in future calls"
     mkdir -p $TEMPDIR
 
     export REGISTRIES_CONFIG_PATH=$TEMPDIR/registries.conf
@@ -51,26 +52,24 @@ EOT
     export CNI_PLUGIN_DIR=$TEMPDIR/plugins
     mkdir -p "$CNI_PLUGIN_DIR"
 
-    curl "$URL/bridge" -o "$CNI_PLUGIN_DIR/bridge"
+    echo "Downloading assets…"
+    curl -s "$URL/bridge" -o "$CNI_PLUGIN_DIR/bridge" &
+    curl -s "$URL/portmap" -o "$CNI_PLUGIN_DIR/portmap" &
+    curl -s "$URL/host-local" -o "$CNI_PLUGIN_DIR/host-local" &
+    curl -s "$URL/tuning" -o "$CNI_PLUGIN_DIR/tuning" &
+    curl -s "$URL/conmon" -o "$TEMPDIR/conmon" &
+    curl -s "$URL/runc" -o "$TEMPDIR/runc" &
+    curl -s "$URL/podman" -o "$TEMPDIR/podman" &
+
+    wait
+
     chmod +x "$CNI_PLUGIN_DIR/bridge"
-
-    curl "$URL/portmap" -o "$CNI_PLUGIN_DIR/portmap"
-    chmod +x "$CNI_PLUGIN_DIR/portmap"
-
-    curl "$URL/host-local" -o "$CNI_PLUGIN_DIR/host-local"
     chmod +x "$CNI_PLUGIN_DIR/host-local"
-
-    curl "$URL/tuning" -o "$CNI_PLUGIN_DIR/tuning"
+    chmod +x "$CNI_PLUGIN_DIR/portmap"
     chmod +x "$CNI_PLUGIN_DIR/tuning"
-
-    curl "$URL/conmon" -o "$TEMPDIR/conmon"
     chmod +x "$TEMPDIR/conmon"
-
-    curl "$URL/runc" -o "$TEMPDIR/runc"
-    chmod +x "$TEMPDIR/runc"
-
-    curl "$URL/podman" -o "$TEMPDIR/podman"
     chmod +x "$TEMPDIR/podman"
+    chmod +x "$TEMPDIR/runc"
 fi
 
 "$TEMPDIR/podman" \
