@@ -1,0 +1,45 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: podman-static
+  labels:
+    app: podman-static
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: podman-static
+  name: podman-static
+  namespace: podman-static
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: podman-static
+  template:
+    metadata:
+      labels:
+        app: podman-static
+    spec:
+      containers:
+        - name: podman-static
+          image: quay.io/saschagrunert/podman-static:latest
+          imagePullPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: podman-static
+  labels:
+    app: podman-static
+  namespace: podman-static
+spec:
+  selector:
+    app: podman-static
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
